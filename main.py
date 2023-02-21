@@ -1,4 +1,5 @@
 import os
+import shutil
 import numpy as np
 import pandas as pd
 from PIL import Image
@@ -17,16 +18,16 @@ from sklearn.cluster import KMeans
 
 
 ### config
-K = 2           ### K-shot
+K = 4           ### K-shot
 
 
 ### reset result
-if os.path.exists("./result.csv"):
-    os.remove("./result.csv")
+if os.path.exists(f"./result_k={K}.csv"):
+    os.remove(f"./result_k={K}.csv")
 
 ### create images folder
-if not os.path.exists("./images"):
-    os.makedirs("./images")
+if not os.path.exists(f"./images_k={K}"):
+    os.makedirs(f"./images_k={K}")
 
 
 class TrainData(Dataset):
@@ -134,19 +135,26 @@ if __name__ == "__main__":
 
         ### get output files
         output_fname = [img_list[i] for i in output]
-        with open("./result.csv", "a") as fw:
+        with open(f"./result_k={K}.csv", "a") as fw:
             buffer = f"{OBJ}"
             for f in output_fname:
                 buffer += f", {f}"
             fw.write(buffer + "\n")
-            
+        
+
+        ### append center in X for viz
+        X = np.append(X, center, axis=0)
+        print(OBJ, ": ", X.shape)
+
         ### t-sne
         X_tsne = manifold.TSNE(n_components=2, init='pca', random_state=5, verbose=1).fit_transform(X)
         x_min, x_max = X_tsne.min(0), X_tsne.max(0)
         X_norm = (X_tsne - x_min) / (x_max - x_min)  # Normalize
-        plt.scatter(X_norm[:, 0], X_norm[:, 1], c=plt.cm.tab20(y))
+        plt.clf()
+        plt.scatter(X_norm[:-K, 0], X_norm[:-K, 1], c=plt.cm.tab20(y))
+        plt.scatter(X_norm[-K:, 0], X_norm[-K:, 1], c="r", s=80)
         plt.xticks([])
         plt.yticks([])
         plt.title(f"t-SNE for {OBJ}")
-        plt.savefig(f"./images/t-SNE_{OBJ}.png")
+        plt.savefig(f"./images_k={K}/t-SNE_{OBJ}.png")
         plt.show()
